@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-const DIAL_START: i64 = 50;
+const DIAL_START: u8 = 50;
 const DIAL_MAX: i64 = 100;
 
 fn main() {
@@ -12,7 +12,8 @@ fn main() {
     let input = BufReader::new(input);
 
     let mut dial_position = DIAL_START;
-    let mut zero_count: u32 = 0;
+    let mut zero_stop_count: u32 = 0;
+    let mut zero_pass_count: i64 = 0;
 
     for line_result in input.lines() {
         let mut line = line_result.expect("reading input line should not fail");
@@ -20,19 +21,32 @@ fn main() {
         let quantity: i64 = line
             .parse()
             .expect("parsing the tick quantity qhould not fail");
-        match direction {
-            'L' => {
-                dial_position = (dial_position - quantity) % DIAL_MAX;
-            }
-            'R' => {
-                dial_position = (dial_position + quantity) % DIAL_MAX;
-            }
+
+        let new_raw_position = match direction {
+            'L' => i64::from(dial_position) - quantity,
+            'R' => i64::from(dial_position) + quantity,
             _ => panic!("unexpected dial quantity"),
+        };
+
+        if new_raw_position <= 0 {
+            if dial_position > 0 {
+                zero_pass_count += 1;
+            }
+            zero_pass_count += new_raw_position / -DIAL_MAX;
+        } else {
+            zero_pass_count += new_raw_position / DIAL_MAX;
         }
+
+        dial_position = new_raw_position
+            .rem_euclid(DIAL_MAX)
+            .try_into()
+            .expect("dial position should fit in an u8");
+
         if dial_position == 0 {
-            zero_count += 1;
+            zero_stop_count += 1;
         }
     }
 
-    eprintln!("Zero was encountered {zero_count} times");
+    eprintln!("Zero was encountered {zero_stop_count} times");
+    eprintln!("Zero was passed through {zero_pass_count} times");
 }
