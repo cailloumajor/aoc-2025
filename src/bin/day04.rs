@@ -19,7 +19,7 @@ fn main() {
     let input_file = File::open(input_path).expect("opening the input should not fail");
     let input = BufReader::new(input_file);
 
-    let mut accessible = 0u64;
+    let mut removed = Vec::new();
 
     let mut matrix = Vec::new();
 
@@ -37,12 +37,33 @@ fn main() {
         matrix.push(line_bool);
     }
 
+    while let r = accessible_rolls(&matrix)
+        && !r.is_empty()
+    {
+        removed.push(r.len());
+
+        for (x, y) in r {
+            matrix[y][x] = false;
+        }
+    }
+
+    let removed_first = removed[0];
+    eprintln!("There are {removed_first} accessible rolls in the first part");
+
+    let total_removed: usize = removed.into_iter().sum();
+    eprintln!("There were {total_removed} rolls removed");
+}
+
+fn accessible_rolls<L: AsRef<[bool]>>(matrix: &[L]) -> Vec<(usize, usize)> {
+    let mut coordinates = Vec::new();
+
     for (y, line) in matrix.iter().enumerate() {
-        for (x, column) in line.iter().enumerate() {
-            if !*column {
-                // No roll here, continue.
-                continue;
-            }
+        for x in line
+            .as_ref()
+            .iter()
+            .enumerate()
+            .filter_map(|(x, occupied)| occupied.then_some(x))
+        {
             let occupied_adjacent = ADJACENT_POSITIONS
                 .iter()
                 .filter(|(delta_x, delta_y)| {
@@ -54,16 +75,16 @@ fn main() {
                     };
                     matrix
                         .get(adj_y)
-                        .and_then(|line| line.get(adj_x))
+                        .and_then(|line| line.as_ref().get(adj_x))
                         .copied()
                         .unwrap_or(false)
                 })
                 .count();
             if occupied_adjacent < 4 {
-                accessible += 1;
+                coordinates.push((x, y));
             }
         }
     }
 
-    eprintln!("There are {accessible} accessible rolls");
+    coordinates
 }
